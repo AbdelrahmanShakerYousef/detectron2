@@ -1,7 +1,3 @@
-# check pytorch installation: 
-import torch, torchvision
-print(torch.__version__, torch.cuda.is_available())
-# Some basic setup:
 # Setup detectron2 logger
 import detectron2
 from detectron2.utils.logger import setup_logger
@@ -18,10 +14,10 @@ from detectron2.config import get_cfg
 from detectron2.utils.visualizer import Visualizer
 from detectron2.data import MetadataCatalog, DatasetCatalog
 from detectron2.engine import DefaultTrainer
-# register_coco_instances("my_dataset_train", {}, "json_annotation_train.json", "path/to/image/dir")
-# register_coco_instances("my_dataset_val", {}, "json_annotation_val.json", "path/to/image/dir")
-
 from detectron2.data.datasets import register_coco_instances
+from detectron2.evaluation import COCOEvaluator, inference_on_dataset
+from detectron2.data import build_detection_test_loader
+
 register_coco_instances("iSAID_train", {}, 
                         "/l/users/miriam.cristofoletti/iSAID/train/instancesonly_filtered_train.json",
                         "/l/users/miriam.cristofoletti/iSAID/train/images/")
@@ -45,7 +41,18 @@ cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 128   # faster (default: 512)
 cfg.MODEL.ROI_HEADS.NUM_CLASSES = 15  
 
 
-os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
-trainer = DefaultTrainer(cfg) 
-trainer.resume_or_load(resume=False)
-trainer.train()
+#os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
+trainer = DefaultTrainer(cfg)
+trainer.resume_or_load(resume=True)
+#trainer.train()
+
+# Inference should use the config with parameters that are used in training
+# cfg now already contains everything we've set previously. We changed it a little bit for inference:
+cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "model_final.pth")  # path to the model we just trained
+cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.7   # set a custom testing threshold
+predictor = DefaultPredictor(cfg)
+
+evaluator = COCOEvaluator("iSAID_val")
+val_loader = build_detection_test_loader(cfg, "iSAID_val")
+print(inference_on_dataset(trainer.model, val_loader, evaluator))
+# another equivalent way to evaluate the model is to use `trainer.test`
