@@ -10,6 +10,7 @@ from detectron2.layers import Conv2d, ShapeSpec, get_norm
 from .backbone import Backbone
 from .build import BACKBONE_REGISTRY
 from .resnet import build_resnet_backbone
+from .convnext import build_convnext_backbone
 
 __all__ = ["build_resnet_fpn_backbone", "build_retinanet_resnet_fpn_backbone", "FPN"]
 
@@ -136,9 +137,13 @@ class FPN(Backbone):
             # Therefore we loop over all modules but skip the first one
             if idx > 0:
                 features = self.in_features[-idx - 1]
+                #print("features idx ",features)
                 features = bottom_up_features[features]
+                #print("features ",features.shape)
                 top_down_features = F.interpolate(prev_features, scale_factor=2.0, mode="nearest")
                 lateral_features = lateral_conv(features)
+                #print("lateral_features : ",lateral_features.shape)
+                #print("top_down_features : ",top_down_features.shape)
                 prev_features = lateral_features + top_down_features
                 if self._fuse_type == "avg":
                     prev_features /= 2
@@ -181,7 +186,7 @@ class LastLevelMaxPool(nn.Module):
     def __init__(self):
         super().__init__()
         self.num_levels = 1
-        self.in_feature = "p5"
+        self.in_feature = "p4"
 
     def forward(self, x):
         return [F.max_pool2d(x, kernel_size=1, stride=2, padding=0)]
@@ -220,6 +225,33 @@ def build_resnet_fpn_backbone(cfg, input_shape: ShapeSpec):
     bottom_up = build_resnet_backbone(cfg, input_shape)
     in_features = cfg.MODEL.FPN.IN_FEATURES
     out_channels = cfg.MODEL.FPN.OUT_CHANNELS
+    backbone = FPN(
+        bottom_up=bottom_up,
+        in_features=in_features,
+        out_channels=out_channels,
+        norm=cfg.MODEL.FPN.NORM,
+        top_block=LastLevelMaxPool(),
+        fuse_type=cfg.MODEL.FPN.FUSE_TYPE,
+    )
+    return backbone
+
+@BACKBONE_REGISTRY.register()
+def build_convnext_fpn_backbone(cfg, input_shape: ShapeSpec):
+    """
+    Args:
+        cfg: a detectron2 CfgNode
+
+    Returns:
+        backbone (Backbone): backbone module, must be a subclass of :class:`Backbone`.
+    """
+    bottom_up = build_convnext_backbone(cfg, input_shape)
+    in_features = cfg.MODEL.FPN.IN_FEATURES
+    out_channels = cfg.MODEL.FPN.OUT_CHANNELS
+    
+    #print("in_features: ", in_features) 
+    #print("bottom_up: ", bottom_up)
+    #print("out_channels : ", out_channels)
+    #print( "Norm : ", cfg.MODEL.FPN.NORM)
     backbone = FPN(
         bottom_up=bottom_up,
         in_features=in_features,

@@ -19,20 +19,21 @@ from detectron2.evaluation import COCOEvaluator, inference_on_dataset
 from detectron2.data import build_detection_test_loader
 
 register_coco_instances("iSAID_train", {}, 
-                        "/l/users/miriam.cristofoletti/iSAID/train/instancesonly_filtered_train.json",
-                        "/l/users/miriam.cristofoletti/iSAID/train/images/")
+                        "/l/users/miriam.cristofoletti/CV703-project/iSAID/train/instancesonly_filtered_train.json",
+                        "/l/users/miriam.cristofoletti/CV703-project/iSAID/train/images/")
 register_coco_instances("iSAID_val", {}, 
-                        "/l/users/miriam.cristofoletti/iSAID/val/instancesonly_filtered_val.json",
-                        "/l/users/miriam.cristofoletti/iSAID/val/images/")
+                        "/l/users/miriam.cristofoletti/CV703-project/iSAID/val/instancesonly_filtered_val.json",
+                        "/l/users/miriam.cristofoletti/CV703-project/iSAID/val/images/")
                         
 
 cfg = get_cfg()
 cfg.OUTPUT_DIR = 'output_fasterrcnn'
-cfg.merge_from_file(model_zoo.get_config_file("COCO-Detection/faster_rcnn_R_101_FPN_3x.yaml"))
+cfg.merge_from_file(model_zoo.get_config_file("COCO-Detection/faster_rcnn_ConvNext.yaml"))
+cfg.MODEL.BACKBONE.NAME ='ConvNeXt'
 cfg.DATASETS.TRAIN = ("iSAID_train",)
 cfg.DATASETS.TEST = ()
 cfg.DATALOADER.NUM_WORKERS = 2
-cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-Detection/faster_rcnn_R_101_FPN_3x.yaml")  # Let training initialize from model zoo
+#cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-Detection/faster_rcnn_R_101_FPN_3x.yaml")  # Let training initialize from model zoo
 cfg.SOLVER.IMS_PER_BATCH = 2
 cfg.SOLVER.BASE_LR = 0.00025  # pick a good LR
 cfg.SOLVER.MAX_ITER = 100000 
@@ -43,8 +44,8 @@ cfg.MODEL.ROI_HEADS.NUM_CLASSES = 15
 
 #os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
 trainer = DefaultTrainer(cfg)
-trainer.resume_or_load(resume=True)
-#trainer.train()
+trainer.resume_or_load(resume=False)
+trainer.train()
 
 # Inference should use the config with parameters that are used in training
 # cfg now already contains everything we've set previously. We changed it a little bit for inference:

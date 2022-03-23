@@ -468,6 +468,13 @@ _C.MODEL.RETINANET.NORM = ""
 # Note that parts of a resnet may be used for both the backbone and the head
 # These options apply to both
 # ---------------------------------------------------------------------------- #
+_C.MODEL.CONVNEXT = CN()
+_C.MODEL.CONVNEXT.OUT_FEATURES = ["stage4"]  # res4 for C4 backbone, res2..5 for FPN backbone
+_C.MODEL.CONVNEXT.NORM = "LN"
+_C.MODEL.CONVNEXT.OUT_CHANNELS = 768
+_C.MODEL.CONVNEXT.BACKBONE_OUT_CHANNELS = 768
+
+
 _C.MODEL.RESNETS = CN()
 
 _C.MODEL.RESNETS.DEPTH = 50

@@ -3,7 +3,12 @@ from .build import build_backbone, BACKBONE_REGISTRY  # noqa F401 isort:skip
 
 from .backbone import Backbone
 from .fpn import FPN
-from .regnet import RegNet
+from .regnet import RegNet 
+from .convnext import (
+    ConvNeXt,
+    LayerNorm,
+    Block,
+    )
 from .resnet import (
     BasicStem,
     ResNet,

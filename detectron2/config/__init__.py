@@ -1,6 +1,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
 from .compat import downgrade_config, upgrade_config
-from .config import CfgNode, get_cfg, global_cfg, set_global_cfg, configurable
+from .config import CfgNode, get_cfg, global_cfg, set_global_cfg, configurable, add_convnext_config
 from .instantiate import instantiate
 from .lazy import LazyCall, LazyConfig
 
@@ -15,6 +15,7 @@ __all__ = [
     "instantiate",
     "LazyCall",
     "LazyConfig",
+    "add_convnext_config",
 ]
 
 

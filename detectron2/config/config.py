@@ -5,7 +5,6 @@ import functools
 import inspect
 import logging
 from fvcore.common.config import CfgNode as _CfgNode
-
 from detectron2.utils.file_io import PathManager
 
 
@@ -263,3 +262,18 @@ def _called_with_cfg(*args, **kwargs):
     # `from_config`'s first argument is forced to be "cfg".
     # So the above check covers all cases.
     return False
+
+
+def add_convnext_config(cfg):
+    """
+    Add config for convnext.
+    """
+    _C = cfg
+
+    _C.MODEL.CONVNEXT = CfgNode()
+
+    _C.MODEL.CONVNEXT.OUT_FEATURES = ["stage4"]
+
+    _C.MODEL.CONVNEXT.OUT_CHANNELS = 768
+
+    _C.MODEL.CONVNEXT.BACKBONE_OUT_CHANNELS = 768
