@@ -27,7 +27,7 @@ register_coco_instances("iSAID_val", {},
                         
 
 cfg = get_cfg()
-cfg.OUTPUT_DIR = 'output_maskrcnn_updated_hyperparameters_resnet_101'
+cfg.OUTPUT_DIR = 'output_maskrcnn_batch4_lr002'
 
 print(cfg.OUTPUT_DIR)
 cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml"))
@@ -46,10 +46,10 @@ cfg.DATALOADER.NUM_WORKERS = 2
 #Comment this line to pretrain on ImageNet only
 cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml")  # Let training initialize from model zoo
 
-cfg.SOLVER.IMS_PER_BATCH = 8
+cfg.SOLVER.IMS_PER_BATCH = 4
 cfg.SOLVER.BASE_LR = 0.02  # pick a good LR
-cfg.SOLVER.MAX_ITER = 90000 
-cfg.SOLVER.STEPS = [60000, 80000]        
+cfg.SOLVER.MAX_ITER = 100000 
+cfg.SOLVER.STEPS = [60000, 80000]        # do not decay learning rate
 cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 128   # faster (default: 512)
 cfg.MODEL.ROI_HEADS.NUM_CLASSES = 15  
 
@@ -57,8 +57,10 @@ cfg.MODEL.ROI_HEADS.NUM_CLASSES = 15
 # Freezing stages: `1` means freezing the stem. `2` means freezing the stem and one residual stage, etc.
 #cfg.MODEL.BACKBONE.FREEZE_AT = 3
 #print("Freezing two layers")
-
 #os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
+#cfg.MODEL.BACKBONE.FREEZE_AT = 0
+
+print(cfg)
 trainer = DefaultTrainer(cfg)
 trainer.resume_or_load(resume=True)
 trainer.train()

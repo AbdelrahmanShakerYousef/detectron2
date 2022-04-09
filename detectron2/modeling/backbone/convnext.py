@@ -26,7 +26,35 @@ __all__ = [
     "Block",
     "ConvNeXt",
 ]
-class Block(nn.Module):
+
+class BasicStem(CNNBlockBase):
+    """
+    The standard ResNet stem (layers before the first residual block),
+    with a conv, relu and max_pool.
+    """
+        
+    def __init__(self, in_channels, out_channels, kernel_size=4, stride=4):
+        """
+        Args:
+            norm (str or callable): norm after the first conv layer.
+                See :func:`layers.get_norm` for supported format.
+        """
+        super().__init__(in_channels, out_channels, stride=4)
+        self.in_channels = in_channels
+        self.conv1 = Conv2d(
+            in_channels,
+            out_channels,
+            kernel_size=4,
+            stride=4)
+        weight_init.c2_msra_fill(self.conv1)
+        self.norm = LayerNorm(out_channels, eps=1e-6, data_format="channels_first")
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.norm(x)
+        return x
+
+class Block(CNNBlockBase):
     r""" ConvNeXt Block. There are two equivalent implementations:
     (1) DwConv -> LayerNorm (channels_first) -> 1x1 Conv -> GELU -> 1x1 Conv; all in (N, C, H, W)
     (2) DwConv -> Permute to (N, H, W, C); LayerNorm (channels_last) -> Linear -> GELU -> Linear; Permute back
@@ -38,7 +66,7 @@ class Block(nn.Module):
         layer_scale_init_value (float): Init value for Layer Scale. Default: 1e-6.
     """
     def __init__(self, dim, drop_path=0., layer_scale_init_value=1e-6):
-        super().__init__()
+        super().__init__(dim,dim,1) #parameters for CNNBlockBase: 'in_channels', 'out_channels', and 'stride'
         self.dwconv = nn.Conv2d(dim, dim, kernel_size=7, padding=3, groups=dim) # depthwise conv
         self.norm = LayerNorm(dim, eps=1e-6)
         self.pwconv1 = nn.Linear(dim, 4 * dim) # pointwise/1x1 convs, implemented with linear layers
@@ -77,7 +105,7 @@ class ConvNeXt(Backbone):
         layer_scale_init_value (float): Init value for Layer Scale. Default: 1e-6.
         head_init_scale (float): Init scaling value for classifier weights and biases. Default: 1.
     """
-    def __init__(self, cfg, input_shape):
+    def __init__(self, cfg, input_shape, freeze_at=0):
         super().__init__()
         
         self.in_chans =3
@@ -102,11 +130,12 @@ class ConvNeXt(Backbone):
             )
             
             
-        stem = nn.Sequential(
-            nn.Conv2d(self.in_chans, self.dims[0], kernel_size=4, stride=4),
-            LayerNorm(self.dims[0], eps=1e-6, data_format="channels_first")
-        )
-        self.downsample_layers.append(stem)
+        #self.stem = nn.Sequential(
+        #    nn.Conv2d(self.in_chans, self.dims[0], kernel_size=4, stride=4),
+        #    LayerNorm(self.dims[0], eps=1e-6, data_format="channels_first")
+        #)
+        self.stem = BasicStem(self.in_chans,self.dims[0], 4, 4)
+        self.downsample_layers.append(self.stem)
         for i in range(3):
             downsample_layer = nn.Sequential(
                     LayerNorm(self.dims[i], eps=1e-6, data_format="channels_first"),
@@ -126,7 +155,7 @@ class ConvNeXt(Backbone):
             cur += self.depths[i]
 
         #self.norm = nn.LayerNorm(self.dims[-1], eps=1e-6) # final norm layer
-        
+        self.freeze(freeze_at)
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -153,6 +182,31 @@ class ConvNeXt(Backbone):
             for name in self.out_features
         }
         #return {"stage4": ShapeSpec(channels=768, stride=2)}
+        
+    def freeze(self, freeze_at=0):
+        """
+        Freeze the first several stages of the ResNet. Commonly used in
+        fine-tuning.
+
+        Layers that produce the same feature map spatial size are defined as one
+        "stage" by :paper:`FPN`.
+
+        Args:
+            freeze_at (int): number of stages to freeze.
+                `1` means freezing the stem. `2` means freezing the stem and
+                one residual stage, etc.
+
+        Returns:
+            nn.Module: this ResNet itself
+        """
+        if freeze_at >= 1:
+            print(" STEM : ",self.stem)
+            self.stem.freeze()
+        for idx, stage in enumerate(self.stages, start=2):
+            if freeze_at >= idx:
+                for block in stage.children():
+                    block.freeze()
+        return self
 
 
 class LayerNorm(nn.Module):
@@ -196,4 +250,5 @@ model_urls = {
 
 @BACKBONE_REGISTRY.register()
 def build_convnext_backbone(cfg, input_shape):
-    return ConvNeXt(cfg, input_shape)
+    print ("ConvNext: Freezing at : ",cfg.MODEL.BACKBONE.FREEZE_AT)
+    return ConvNeXt(cfg, input_shape, freeze_at=cfg.MODEL.BACKBONE.FREEZE_AT)
